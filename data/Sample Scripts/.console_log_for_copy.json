@@ -1,0 +1,28 @@
+{
+    "type": "script",
+    "description": "console_log_for_copy",
+    "store": {},
+    "modes": [
+        3
+    ],
+    "usageCount": 24,
+    "prompt": false,
+    "omitTrigger": false,
+    "showInTrayMenu": false,
+    "abbreviation": {
+        "abbreviations": [],
+        "backspace": true,
+        "ignoreCase": false,
+        "immediate": false,
+        "triggerInside": false,
+        "wordChars": "[\\w]"
+    },
+    "hotkey": {
+        "modifiers": [],
+        "hotKey": "<page_up>"
+    },
+    "filter": {
+        "regex": null,
+        "isRecursive": false
+    }
+}
