@@ -498,6 +498,13 @@ require('lazy').setup({
               table.insert(new_config.cmd, new_root_dir)
               table.insert(new_config.cmd, '--ngProbeLocations')
               table.insert(new_config.cmd, new_root_dir)
+              
+              -- Ensure TypeScript is available for template analysis
+              local ts_server_path = vim.fn.system('npm config get prefix'):gsub('\n', '') .. '/lib/node_modules/typescript/lib'
+              if vim.fn.isdirectory(ts_server_path) == 1 then
+                table.insert(new_config.cmd, '--tsServerPath')
+                table.insert(new_config.cmd, ts_server_path)
+              end
             end
           end,
           settings = {
@@ -1221,6 +1228,23 @@ vim.api.nvim_create_user_command('AngularDiagnostic', function()
     else
       print('Could not check npm packages')
     end
+    
+    -- Check TypeScript availability specifically
+    print('--- TypeScript for Template IntelliSense ---')
+    local ts_version = vim.fn.system('tsc --version 2>/dev/null'):gsub('\n', '')
+    if ts_version and ts_version ~= '' then
+      print('✓ TypeScript compiler: ' .. ts_version)
+    else
+      print('✗ TypeScript compiler not found - required for Angular template IntelliSense')
+    end
+    
+    local ts_server_path = vim.fn.system('npm config get prefix'):gsub('\n', '') .. '/lib/node_modules/typescript/lib'
+    if vim.fn.isdirectory(ts_server_path) == 1 then
+      print('✓ TypeScript lib directory: ' .. ts_server_path)
+    else
+      print('✗ TypeScript lib directory not found: ' .. ts_server_path)
+    end
+    print('')
   end
 
   check_env()

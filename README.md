@@ -253,9 +253,69 @@ angularls = {
 
 #### Key Features:
 - **Strict Template Checking**: Enabled `forceStrictTemplates` for better type safety in templates
+- **TypeScript Integration**: Automatically configures TypeScript server path for template IntelliSense
 - **Nx Support**: Automatic detection of Nx workspaces (`nx.json`, `workspace.json`)
 - **Enhanced Type Checking**: Stricter TypeScript preferences for better code quality
 - **Intelligent Path Detection**: Automatically finds Angular Language Server from nvm/npm global modules
+
+#### Why TypeScript is Required for Angular Templates:
+
+Angular template IntelliSense **requires TypeScript** for the following critical features:
+
+```html
+<!-- Type checking for property bindings -->
+<div [hidden]="isVisible">{{ userName }}</div>
+<!--           ↑                ↑        -->
+<!--      boolean type      string type  -->
+
+<!-- Method signature validation -->
+<button (click)="saveUser($event)">Save</button>
+<!--              ↑                      -->
+<!--        Validates method exists      -->
+<!--        and parameter types          -->
+
+<!-- Structural directive type inference -->
+<li *ngFor="let user of users; index as i">
+<!--        ↑           ↑            ↑    -->
+<!--    inferred    array type   number   -->
+  {{ user.name }} - {{ i }}
+</li>
+
+<!-- Form control type safety -->
+<input [formControl]="userForm.get('email')" />
+<!--                    ↑                    -->
+<!--         TypeScript validates          -->
+<!--         form control exists           -->
+```
+
+**Without TypeScript:**
+- ❌ No property binding validation
+- ❌ No method signature checking  
+- ❌ No type inference in templates
+- ❌ No auto-completion for component properties
+- ❌ `forceStrictTemplates` won't work
+
+### How Angular + TypeScript Language Servers Work Together
+
+This configuration uses **two complementary language servers**:
+
+1. **TypeScript Language Server (`ts_ls`)**: 
+   - Handles `.ts` files (components, services, etc.)
+   - Provides TypeScript IntelliSense, type checking, refactoring
+   - Manages imports, exports, and module resolution
+
+2. **Angular Language Server (`angularls`)**:
+   - Handles `.html` Angular templates 
+   - **Uses TypeScript** to understand component context
+   - Provides template-specific features (directives, pipes, etc.)
+   - Enables `forceStrictTemplates` type checking
+
+**The magic happens when they coordinate:**
+```
+Component.ts ←→ TypeScript LS ←→ Angular LS ←→ Component.html
+    ↓                              ↓              ↓
+Type info ──────────────→ Template analysis ──→ IntelliSense
+```
 
 ### TypeScript Settings
 
@@ -325,6 +385,45 @@ Replace the colorscheme section:
 ## 🚨 Troubleshooting
 
 ### Common Issues
+
+#### TypeScript Not Working for Templates
+
+If you're not getting IntelliSense in Angular templates, TypeScript might not be properly configured:
+
+**Check TypeScript installation:**
+```bash
+# Verify TypeScript is installed globally
+tsc --version
+
+# If not installed:
+npm install -g typescript
+
+# Verify with diagnostic command
+:AngularDiagnostic
+```
+
+**Common TypeScript issues:**
+```bash
+# 1. TypeScript not in global npm
+npm list -g typescript
+
+# 2. Wrong TypeScript version (Angular requires 4.0+)
+npm install -g typescript@latest
+
+# 3. Project-specific tsconfig issues
+# Make sure your project has a valid tsconfig.json
+
+# 4. Angular Language Server can't find TypeScript
+# The config automatically sets --tsServerPath, but you can verify:
+npm config get prefix
+ls -la $(npm config get prefix)/lib/node_modules/typescript/lib
+```
+
+**Template IntelliSense not working:**
+- ✅ Ensure `*.component.html` files are detected as `htmlangular` filetype
+- ✅ Check `:LspInfo` shows Angular Language Server is attached
+- ✅ Verify TypeScript compiler is available globally
+- ✅ Confirm `tsconfig.json` exists in project root
 
 #### Angular Language Server Not Starting
 
