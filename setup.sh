@@ -120,18 +120,56 @@ install_system_deps() {
 install_npm_packages() {
     print_status "Installing npm packages globally..."
     
+    # Check if nvm is available and source it
+    if [ -f "$HOME/.nvm/nvm.sh" ]; then
+        print_status "Detected nvm, sourcing nvm environment..."
+        export NVM_DIR="$HOME/.nvm"
+        [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+        [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+        print_success "nvm environment loaded"
+    fi
+    
+    # Display current Node.js and npm info
+    print_status "Using Node.js: $(node --version)"
+    print_status "Using npm: $(npm --version)"
+    print_status "Global npm prefix: $(npm config get prefix)"
+    
     # Angular CLI and Language Server
+    print_status "Installing Angular CLI..."
     npm install -g @angular/cli
+    
+    print_status "Installing Angular Language Server..."
     npm install -g @angular/language-server
+    
+    print_status "Installing TypeScript..."
     npm install -g typescript
     
     # Formatters and Linters
+    print_status "Installing Prettier..."
     npm install -g prettier
+    
+    print_status "Installing ESLint daemon..."
     npm install -g eslint_d
     
-    # Additional tools
+    # Additional language servers
+    print_status "Installing TypeScript Language Server..."
     npm install -g typescript-language-server
+    
+    print_status "Installing VS Code Language Servers..."
     npm install -g vscode-langservers-extracted
+    
+    # Verify Angular Language Server installation
+    local ngserver_path=$(npm list -g @angular/language-server --depth=0 --parseable 2>/dev/null)
+    if [ -n "$ngserver_path" ]; then
+        local ngserver_bin="$ngserver_path/bin/ngserver"
+        if [ -f "$ngserver_bin" ]; then
+            print_success "Angular Language Server installed at: $ngserver_bin"
+        else
+            print_warning "Angular Language Server package found but binary not at expected location"
+        fi
+    else
+        print_warning "Could not verify Angular Language Server installation"
+    fi
     
     print_success "npm packages installed"
 }

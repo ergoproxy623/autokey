@@ -375,15 +375,102 @@ require('lazy').setup({
         -- Angular Language Server
         angularls = {
           root_dir = require('lspconfig.util').root_pattern('angular.json', 'project.json'),
+          cmd = function()
+            -- Try to get Angular Language Server from global npm/nvm
+            local function get_global_npm_path()
+              -- Try to get npm global path
+              local handle = io.popen('npm config get prefix 2>/dev/null')
+              if handle then
+                local result = handle:read('*a')
+                handle:close()
+                if result and result ~= '' then
+                  return vim.trim(result)
+                end
+              end
+              return nil
+            end
+
+            local function get_nvm_current_path()
+              -- Try to get current nvm path
+              local nvm_current = os.getenv('NVM_BIN')
+              if nvm_current then
+                return vim.fn.fnamemodify(nvm_current, ':h')
+              end
+              
+              -- Fallback: try to detect from PATH
+              local handle = io.popen('which node 2>/dev/null')
+              if handle then
+                local node_path = handle:read('*a')
+                handle:close()
+                if node_path and node_path ~= '' then
+                  return vim.fn.fnamemodify(vim.trim(node_path), ':h:h')
+                end
+              end
+              return nil
+            end
+
+            -- Try different paths for Angular Language Server
+            local possible_paths = {}
+            
+            -- 1. Try nvm current version
+            local nvm_path = get_nvm_current_path()
+            if nvm_path then
+              table.insert(possible_paths, nvm_path .. '/lib/node_modules/@angular/language-server/bin/ngserver')
+              table.insert(possible_paths, nvm_path .. '/node_modules/@angular/language-server/bin/ngserver')
+            end
+            
+            -- 2. Try global npm prefix
+            local npm_prefix = get_global_npm_path()
+            if npm_prefix then
+              table.insert(possible_paths, npm_prefix .. '/lib/node_modules/@angular/language-server/bin/ngserver')
+              table.insert(possible_paths, npm_prefix .. '/node_modules/@angular/language-server/bin/ngserver')
+            end
+            
+            -- 3. Try common global paths
+            local home = os.getenv('HOME')
+            if home then
+              table.insert(possible_paths, home .. '/.nvm/versions/node/*/lib/node_modules/@angular/language-server/bin/ngserver')
+              table.insert(possible_paths, home .. '/.local/lib/node_modules/@angular/language-server/bin/ngserver')
+            end
+            
+            -- 4. Fallback to system paths
+            table.insert(possible_paths, '/usr/local/lib/node_modules/@angular/language-server/bin/ngserver')
+            table.insert(possible_paths, '/usr/lib/node_modules/@angular/language-server/bin/ngserver')
+            
+            -- 5. Try using npx as fallback
+            table.insert(possible_paths, 'npx')
+            
+            -- Find the first existing path
+            for _, path in ipairs(possible_paths) do
+              if path == 'npx' then
+                -- Special case for npx
+                return { 'npx', '@angular/language-server', '--stdio' }
+              elseif vim.fn.executable(path) == 1 then
+                return { path, '--stdio' }
+              elseif string.find(path, '*') then
+                -- Handle glob pattern for nvm versions
+                local handle = io.popen('ls -1 ' .. path .. ' 2>/dev/null | head -n 1')
+                if handle then
+                  local result = handle:read('*a')
+                  handle:close()
+                  if result and result ~= '' and vim.fn.executable(vim.trim(result)) == 1 then
+                    return { vim.trim(result), '--stdio' }
+                  end
+                end
+              end
+            end
+            
+            -- Ultimate fallback
+            return { 'ngserver', '--stdio' }
+          end,
           on_new_config = function(new_config, new_root_dir)
-            new_config.cmd = new_config.cmd or {
-              'ngserver',
-              '--stdio',
-              '--tsProbeLocations',
-              new_root_dir,
-              '--ngProbeLocations',
-              new_root_dir,
-            }
+            -- Add TypeScript and Angular probe locations
+            if new_config.cmd and new_config.cmd[1] ~= 'npx' then
+              table.insert(new_config.cmd, '--tsProbeLocations')
+              table.insert(new_config.cmd, new_root_dir)
+              table.insert(new_config.cmd, '--ngProbeLocations')
+              table.insert(new_config.cmd, new_root_dir)
+            end
           end,
         },
 
@@ -912,6 +999,74 @@ vim.keymap.set('n', '<leader>ad', '<cmd>!ng generate directive ', { desc = '[A]n
 vim.keymap.set('n', '<leader>ab', '<cmd>!ng build<CR>', { desc = '[A]ngular [B]uild' })
 vim.keymap.set('n', '<leader>ar', '<cmd>!ng serve<CR>', { desc = '[A]ngular Se[r]ve' })
 vim.keymap.set('n', '<leader>at', '<cmd>!ng test<CR>', { desc = '[A]ngular [T]est' })
+
+-- Diagnostic command for Angular Language Server setup
+vim.api.nvim_create_user_command('AngularDiagnostic', function()
+  local function check_path(path, name)
+    if vim.fn.executable(path) == 1 then
+      print('✓ ' .. name .. ': ' .. path)
+      return true
+    else
+      print('✗ ' .. name .. ': ' .. path .. ' (not found)')
+      return false
+    end
+  end
+
+  local function check_env()
+    print('--- Environment Information ---')
+    print('Node.js: ' .. (vim.fn.system('node --version'):gsub('\n', '') or 'not found'))
+    print('npm: ' .. (vim.fn.system('npm --version'):gsub('\n', '') or 'not found'))
+    print('npm prefix: ' .. (vim.fn.system('npm config get prefix'):gsub('\n', '') or 'not found'))
+    
+    local nvm_bin = os.getenv('NVM_BIN')
+    if nvm_bin then
+      print('NVM_BIN: ' .. nvm_bin)
+    else
+      print('NVM_BIN: not set')
+    end
+    print('')
+  end
+
+  local function check_angular_ls()
+    print('--- Angular Language Server Detection ---')
+    
+    -- Get the actual command that would be used
+    local servers = require('lspconfig').get_active_clients({ name = 'angularls' })
+    if #servers > 0 then
+      print('Angular LS is running with command: ' .. vim.inspect(servers[1].config.cmd))
+    else
+      -- Try to get the command that would be used
+      local angularls_config = require('lspconfig').angularls
+      if angularls_config and angularls_config.cmd then
+        local cmd = angularls_config.cmd()
+        print('Angular LS would use command: ' .. vim.inspect(cmd))
+        if cmd and cmd[1] then
+          check_path(cmd[1], 'Angular Language Server')
+        end
+      end
+    end
+    print('')
+  end
+
+  local function check_npm_packages()
+    print('--- Global npm Packages ---')
+    local handle = io.popen('npm list -g @angular/language-server @angular/cli typescript 2>/dev/null')
+    if handle then
+      local result = handle:read('*a')
+      handle:close()
+      print(result)
+    else
+      print('Could not check npm packages')
+    end
+  end
+
+  check_env()
+  check_angular_ls()
+  check_npm_packages()
+  
+  print('--- LSP Status ---')
+  vim.cmd('LspInfo')
+end, { desc = 'Diagnose Angular Language Server setup' })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
 -- vim: ts=2 sts=2 sw=2 et

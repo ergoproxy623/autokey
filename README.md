@@ -79,6 +79,26 @@ curl -o ~/.config/nvim/init.lua https://raw.githubusercontent.com/yourusername/k
 ```
 
 ### 3. Install Language Servers and Tools
+
+#### If using nvm (Node Version Manager)
+```bash
+# Source nvm if not already in your shell profile
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+
+# Use the latest LTS Node.js version
+nvm install --lts
+nvm use --lts
+
+# Install global packages
+npm install -g @angular/language-server
+npm install -g typescript
+npm install -g @angular/cli
+npm install -g prettier
+npm install -g eslint_d
+```
+
+#### If using system npm
 ```bash
 # Install Angular Language Server and related tools
 npm install -g @angular/language-server
@@ -89,6 +109,8 @@ npm install -g @angular/cli
 npm install -g prettier
 npm install -g eslint_d
 ```
+
+> **Note**: The configuration automatically detects your nvm setup and uses the Angular Language Server from your current nvm environment.
 
 ### 4. First Launch
 ```bash
@@ -265,12 +287,40 @@ Replace the colorscheme section:
 ### Common Issues
 
 #### Angular Language Server Not Starting
+
+**For nvm users:**
+```bash
+# Check current nvm environment
+echo $NVM_BIN
+which node
+which npm
+
+# Check if Angular Language Server is installed in current nvm version
+npm list -g @angular/language-server
+
+# If not found, install in current nvm version
+npm install -g @angular/language-server typescript
+
+# Verify installation
+ls -la $(npm config get prefix)/lib/node_modules/@angular/language-server/bin/ngserver
+```
+
+**For system npm users:**
 ```bash
 # Check if Angular Language Server is installed
 npm list -g @angular/language-server
 
 # Reinstall if needed
 npm install -g @angular/language-server typescript
+```
+
+**Debug Angular Language Server path detection:**
+```bash
+# In Neovim, run the built-in diagnostic command:
+:AngularDiagnostic
+
+# Or manually check the path being used:
+:lua print(vim.inspect(require('lspconfig').angularls.cmd()))
 ```
 
 #### LSP Not Working
