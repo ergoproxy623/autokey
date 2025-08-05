@@ -1,0 +1,109 @@
+<div class="container">
+  <h1>{{ title }}</h1>
+  
+  <!-- Angular directives and interpolation -->
+  <div *ngIf="showContent; else loadingTemplate" class="content">
+    <p>Welcome to {{ appName }}!</p>
+    
+    <!-- ngFor directive -->
+    <ul>
+      <li *ngFor="let item of items; trackBy: trackByFn; index as i" 
+          [class.active]="item.active"
+          (click)="selectItem(item, i)">
+        {{ i + 1 }}. {{ item.name }} - {{ item.description }}
+      </li>
+    </ul>
+    
+    <!-- Form with two-way binding -->
+    <form [formGroup]="userForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label for="username">Username:</label>
+        <input 
+          id="username"
+          type="text" 
+          formControlName="username"
+          [class.invalid]="userForm.get('username')?.invalid && userForm.get('username')?.touched"
+          placeholder="Enter your username">
+        
+        <div *ngIf="userForm.get('username')?.errors?.['required'] && userForm.get('username')?.touched" 
+             class="error-message">
+          Username is required
+        </div>
+      </div>
+      
+      <div class="form-group">
+        <label for="email">Email:</label>
+        <input 
+          id="email"
+          type="email" 
+          formControlName="email"
+          [class.invalid]="userForm.get('email')?.invalid && userForm.get('email')?.touched"
+          placeholder="Enter your email">
+      </div>
+      
+      <button 
+        type="submit" 
+        [disabled]="userForm.invalid"
+        class="btn btn-primary">
+        Submit
+      </button>
+    </form>
+  </div>
+  
+  <!-- Loading template -->
+  <ng-template #loadingTemplate>
+    <div class="loading">
+      <p>Loading...</p>
+      <div class="spinner"></div>
+    </div>
+  </ng-template>
+  
+  <!-- Pipe examples -->
+  <div class="info-section">
+    <p>Current Date: {{ currentDate | date:'medium' }}</p>
+    <p>Price: {{ price | currency:'USD':'symbol':'1.2-2' }}</p>
+    <p>Description: {{ description | titlecase | slice:0:50 }}</p>
+  </div>
+  
+  <!-- Event binding -->
+  <div class="actions">
+    <button (click)="increment()" class="btn btn-secondary">Increment: {{ counter }}</button>
+    <button (click)="reset()" class="btn btn-warning">Reset</button>
+    <button (click)="loadData()" [disabled]="isLoading" class="btn btn-info">
+      {{ isLoading ? 'Loading...' : 'Load Data' }}
+    </button>
+  </div>
+  
+  <!-- Custom component usage -->
+  <app-user-card 
+    [user]="selectedUser"
+    [showActions]="true"
+    (userSelected)="onUserSelected($event)"
+    (userDeleted)="onUserDeleted($event)">
+  </app-user-card>
+  
+  <!-- Angular Material components example -->
+  <mat-card class="example-card">
+    <mat-card-header>
+      <mat-card-title>Material Design</mat-card-title>
+      <mat-card-subtitle>Example Component</mat-card-subtitle>
+    </mat-card-header>
+    <mat-card-content>
+      <mat-form-field appearance="fill">
+        <mat-label>Choose an option</mat-label>
+        <mat-select [(value)]="selectedOption">
+          <mat-option *ngFor="let option of options" [value]="option.value">
+            {{ option.name }}
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+    </mat-card-content>
+    <mat-card-actions>
+      <button mat-button>SAVE</button>
+      <button mat-button>CANCEL</button>
+    </mat-card-actions>
+  </mat-card>
+</div>
+
+<!-- Router outlet for child components -->
+<router-outlet></router-outlet>
