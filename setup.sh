@@ -138,6 +138,12 @@ install_npm_packages() {
     print_status "Installing Angular CLI..."
     npm install -g @angular/cli
     
+    # Check if we should install Nx CLI
+    if [ -f "nx.json" ] || [ -f "workspace.json" ]; then
+        print_status "Nx workspace detected, installing Nx CLI..."
+        npm install -g nx
+    fi
+    
     print_status "Installing Angular Language Server..."
     npm install -g @angular/language-server
     

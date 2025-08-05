@@ -346,6 +346,7 @@ require('lazy').setup({
       local servers = {
         -- TypeScript/JavaScript Server
         ts_ls = {
+          root_dir = require('lspconfig.util').root_pattern('tsconfig.json', 'package.json', 'nx.json', 'workspace.json', '.git'),
           settings = {
             typescript = {
               inlayHints = {
@@ -356,6 +357,28 @@ require('lazy').setup({
                 includeInlayPropertyDeclarationTypeHints = true,
                 includeInlayFunctionLikeReturnTypeHints = true,
                 includeInlayEnumMemberValueHints = true,
+              },
+              preferences = {
+                -- Enable strict null checks
+                strictNullChecks = true,
+                -- Enable strict function types
+                strictFunctionTypes = true,
+                -- Enable strict bind call apply
+                strictBindCallApply = true,
+                -- Enable strict property initialization
+                strictPropertyInitialization = true,
+                -- Enable no implicit any
+                noImplicitAny = true,
+                -- Enable no implicit returns
+                noImplicitReturns = true,
+                -- Enable no implicit this
+                noImplicitThis = true,
+              },
+              -- Suggest improvements for Angular specific patterns
+              suggest = {
+                autoImports = true,
+                completeJSDocs = true,
+                completeFunctionCalls = true,
               },
             },
             javascript = {
@@ -368,13 +391,18 @@ require('lazy').setup({
                 includeInlayFunctionLikeReturnTypeHints = true,
                 includeInlayEnumMemberValueHints = true,
               },
+              suggest = {
+                autoImports = true,
+                completeJSDocs = true,
+                completeFunctionCalls = true,
+              },
             },
           },
         },
 
         -- Angular Language Server
         angularls = {
-          root_dir = require('lspconfig.util').root_pattern('angular.json', 'project.json'),
+          root_dir = require('lspconfig.util').root_pattern('angular.json', 'project.json', 'nx.json', 'workspace.json'),
           cmd = function()
             -- Try to get Angular Language Server from global npm/nvm
             local function get_global_npm_path()
@@ -472,6 +500,17 @@ require('lazy').setup({
               table.insert(new_config.cmd, new_root_dir)
             end
           end,
+          settings = {
+            angular = {
+              -- Enable strict template checking for better type safety
+              forceStrictTemplates = true,
+              -- Enable experimental features
+              experimental = {
+                -- Ivy language service features
+                ivy = true,
+              },
+            },
+          },
         },
 
         -- HTML Language Server
@@ -987,18 +1026,133 @@ vim.api.nvim_create_autocmd('FileType', {
   end,
 })
 
--- Custom keymaps for Angular development
-vim.keymap.set('n', '<leader>ac', '<cmd>!ng generate component ', { desc = '[A]ngular [C]omponent' })
-vim.keymap.set('n', '<leader>as', '<cmd>!ng generate service ', { desc = '[A]ngular [S]ervice' })
-vim.keymap.set('n', '<leader>am', '<cmd>!ng generate module ', { desc = '[A]ngular [M]odule' })
-vim.keymap.set('n', '<leader>ag', '<cmd>!ng generate guard ', { desc = '[A]ngular [G]uard' })
-vim.keymap.set('n', '<leader>ap', '<cmd>!ng generate pipe ', { desc = '[A]ngular [P]ipe' })
-vim.keymap.set('n', '<leader>ad', '<cmd>!ng generate directive ', { desc = '[A]ngular [D]irective' })
+-- Function to detect if current project is using Nx
+local function is_nx_workspace()
+  return vim.fn.filereadable('nx.json') == 1 or vim.fn.filereadable('workspace.json') == 1
+end
 
--- Angular build and serve commands
-vim.keymap.set('n', '<leader>ab', '<cmd>!ng build<CR>', { desc = '[A]ngular [B]uild' })
-vim.keymap.set('n', '<leader>ar', '<cmd>!ng serve<CR>', { desc = '[A]ngular Se[r]ve' })
-vim.keymap.set('n', '<leader>at', '<cmd>!ng test<CR>', { desc = '[A]ngular [T]est' })
+-- Function to get CLI command (nx or ng)
+local function get_cli_cmd()
+  return is_nx_workspace() and 'nx' or 'ng'
+end
+
+-- Custom keymaps for Angular/Nx development
+vim.keymap.set('n', '<leader>ac', function()
+  local cmd = get_cli_cmd()
+  local name = vim.fn.input('Component name: ')
+  if name and name ~= '' then
+    vim.cmd('!' .. cmd .. ' generate component ' .. name)
+  end
+end, { desc = '[A]ngular [C]omponent' })
+
+vim.keymap.set('n', '<leader>as', function()
+  local cmd = get_cli_cmd()
+  local name = vim.fn.input('Service name: ')
+  if name and name ~= '' then
+    vim.cmd('!' .. cmd .. ' generate service ' .. name)
+  end
+end, { desc = '[A]ngular [S]ervice' })
+
+vim.keymap.set('n', '<leader>am', function()
+  local cmd = get_cli_cmd()
+  local name = vim.fn.input('Module name: ')
+  if name and name ~= '' then
+    vim.cmd('!' .. cmd .. ' generate module ' .. name)
+  end
+end, { desc = '[A]ngular [M]odule' })
+
+vim.keymap.set('n', '<leader>ag', function()
+  local cmd = get_cli_cmd()
+  local name = vim.fn.input('Guard name: ')
+  if name and name ~= '' then
+    vim.cmd('!' .. cmd .. ' generate guard ' .. name)
+  end
+end, { desc = '[A]ngular [G]uard' })
+
+vim.keymap.set('n', '<leader>ap', function()
+  local cmd = get_cli_cmd()
+  local name = vim.fn.input('Pipe name: ')
+  if name and name ~= '' then
+    vim.cmd('!' .. cmd .. ' generate pipe ' .. name)
+  end
+end, { desc = '[A]ngular [P]ipe' })
+
+vim.keymap.set('n', '<leader>ad', function()
+  local cmd = get_cli_cmd()
+  local name = vim.fn.input('Directive name: ')
+  if name and name ~= '' then
+    vim.cmd('!' .. cmd .. ' generate directive ' .. name)
+  end
+end, { desc = '[A]ngular [D]irective' })
+
+-- Angular/Nx build and serve commands
+vim.keymap.set('n', '<leader>ab', function()
+  local cmd = get_cli_cmd()
+  if is_nx_workspace() then
+    -- For Nx, prompt for project name
+    local project = vim.fn.input('Project to build (leave empty for default): ')
+    if project and project ~= '' then
+      vim.cmd('!' .. cmd .. ' build ' .. project)
+    else
+      vim.cmd('!' .. cmd .. ' build')
+    end
+  else
+    vim.cmd('!' .. cmd .. ' build')
+  end
+end, { desc = '[A]ngular [B]uild' })
+
+vim.keymap.set('n', '<leader>ar', function()
+  local cmd = get_cli_cmd()
+  if is_nx_workspace() then
+    -- For Nx, prompt for project name
+    local project = vim.fn.input('Project to serve (leave empty for default): ')
+    if project and project ~= '' then
+      vim.cmd('!' .. cmd .. ' serve ' .. project)
+    else
+      vim.cmd('!' .. cmd .. ' serve')
+    end
+  else
+    vim.cmd('!' .. cmd .. ' serve')
+  end
+end, { desc = '[A]ngular Se[r]ve' })
+
+vim.keymap.set('n', '<leader>at', function()
+  local cmd = get_cli_cmd()
+  if is_nx_workspace() then
+    -- For Nx, prompt for project name
+    local project = vim.fn.input('Project to test (leave empty for default): ')
+    if project and project ~= '' then
+      vim.cmd('!' .. cmd .. ' test ' .. project)
+    else
+      vim.cmd('!' .. cmd .. ' test')
+    end
+  else
+    vim.cmd('!' .. cmd .. ' test')
+  end
+end, { desc = '[A]ngular [T]est' })
+
+-- Nx-specific commands
+if is_nx_workspace() then
+  vim.keymap.set('n', '<leader>ng', '<cmd>!nx graph<CR>', { desc = '[N]x [G]raph' })
+  vim.keymap.set('n', '<leader>nl', '<cmd>!nx list<CR>', { desc = '[N]x [L]ist plugins' })
+  vim.keymap.set('n', '<leader>nr', '<cmd>!nx reset<CR>', { desc = '[N]x [R]eset cache' })
+  
+  vim.keymap.set('n', '<leader>nf', function()
+    local scope = vim.fn.input('Nx format scope (leave empty for all): ')
+    if scope and scope ~= '' then
+      vim.cmd('!nx format --projects=' .. scope)
+    else
+      vim.cmd('!nx format')
+    end
+  end, { desc = '[N]x [F]ormat' })
+  
+  vim.keymap.set('n', '<leader>na', function()
+    local target = vim.fn.input('Target to run for affected projects: ', 'build')
+    if target and target ~= '' then
+      vim.cmd('!nx affected --target=' .. target)
+    end
+  end, { desc = '[N]x [A]ffected' })
+end
 
 -- Diagnostic command for Angular Language Server setup
 vim.api.nvim_create_user_command('AngularDiagnostic', function()
@@ -1023,6 +1177,15 @@ vim.api.nvim_create_user_command('AngularDiagnostic', function()
       print('NVM_BIN: ' .. nvm_bin)
     else
       print('NVM_BIN: not set')
+    end
+    
+    -- Check workspace type
+    if is_nx_workspace() then
+      print('Workspace: Nx monorepo detected')
+      print('CLI command: nx')
+    else
+      print('Workspace: Standard Angular project')
+      print('CLI command: ng')
     end
     print('')
   end

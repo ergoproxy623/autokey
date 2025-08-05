@@ -149,18 +149,27 @@ The leader key is set to `<Space>`.
 | `<leader>f` | Format buffer |
 | `<leader>l` | Trigger linting |
 
-#### Angular-Specific Commands
+#### Angular/Nx Commands
 | Key | Description |
 |-----|-------------|
-| `<leader>ac` | Generate Angular component |
-| `<leader>as` | Generate Angular service |
-| `<leader>am` | Generate Angular module |
-| `<leader>ag` | Generate Angular guard |
-| `<leader>ap` | Generate Angular pipe |
-| `<leader>ad` | Generate Angular directive |
-| `<leader>ab` | Angular build |
-| `<leader>ar` | Angular serve |
-| `<leader>at` | Angular test |
+| `<leader>ac` | Generate component (ng/nx generate component) |
+| `<leader>as` | Generate service (ng/nx generate service) |
+| `<leader>am` | Generate module (ng/nx generate module) |
+| `<leader>ag` | Generate guard (ng/nx generate guard) |
+| `<leader>ap` | Generate pipe (ng/nx generate pipe) |
+| `<leader>ad` | Generate directive (ng/nx generate directive) |
+| `<leader>ab` | Build project (ng/nx build) |
+| `<leader>ar` | Serve project (ng/nx serve) |
+| `<leader>at` | Test project (ng/nx test) |
+
+#### Nx-Specific Commands (only in Nx workspaces)
+| Key | Description |
+|-----|-------------|
+| `<leader>ng` | Show Nx dependency graph |
+| `<leader>nl` | List Nx plugins |
+| `<leader>nr` | Reset Nx cache |
+| `<leader>nf` | Format code (nx format) |
+| `<leader>na` | Run target on affected projects |
 
 #### Buffer and Window Management
 | Key | Description |
@@ -178,7 +187,9 @@ The leader key is set to `<Space>`.
 
 ## 🏗️ Project Structure
 
-This configuration works best with Angular projects that have the following structure:
+This configuration works with both standard Angular projects and Nx monorepos:
+
+### Standard Angular Project
 ```
 my-angular-app/
 ├── angular.json          # Detected as root marker
@@ -195,27 +206,56 @@ my-angular-app/
 └── ...
 ```
 
+### Nx Monorepo
+```
+my-nx-workspace/
+├── nx.json               # Detected as root marker
+├── workspace.json        # Legacy Nx workspaces
+├── package.json
+├── tsconfig.base.json
+├── apps/
+│   ├── my-app/
+│   ├── my-api/
+│   └── ...
+├── libs/
+│   ├── shared/
+│   ├── ui/
+│   └── ...
+├── tools/
+└── ...
+```
+
+> **Note**: The configuration automatically detects whether you're in an Nx workspace and adjusts commands accordingly (`nx` vs `ng`).
+
 ## ⚙️ Configuration
 
 ### Angular Language Server Settings
 
-The configuration includes optimized settings for the Angular Language Server:
+The configuration includes optimized settings for the Angular Language Server with enhanced type checking:
 
 ```lua
 angularls = {
-  root_dir = require('lspconfig.util').root_pattern('angular.json', 'project.json'),
-  on_new_config = function(new_config, new_root_dir)
-    new_config.cmd = new_config.cmd or {
-      'ngserver',
-      '--stdio',
-      '--tsProbeLocations',
-      new_root_dir,
-      '--ngProbeLocations',
-      new_root_dir,
-    }
-  end,
+  root_dir = require('lspconfig.util').root_pattern('angular.json', 'project.json', 'nx.json', 'workspace.json'),
+  settings = {
+    angular = {
+      -- Enable strict template checking for better type safety
+      forceStrictTemplates = true,
+      -- Enable experimental features
+      experimental = {
+        -- Ivy language service features
+        ivy = true,
+      },
+    },
+  },
+  -- ... automatic path detection logic
 },
 ```
+
+#### Key Features:
+- **Strict Template Checking**: Enabled `forceStrictTemplates` for better type safety in templates
+- **Nx Support**: Automatic detection of Nx workspaces (`nx.json`, `workspace.json`)
+- **Enhanced Type Checking**: Stricter TypeScript preferences for better code quality
+- **Intelligent Path Detection**: Automatically finds Angular Language Server from nvm/npm global modules
 
 ### TypeScript Settings
 
@@ -318,6 +358,13 @@ npm install -g @angular/language-server typescript
 ```bash
 # In Neovim, run the built-in diagnostic command:
 :AngularDiagnostic
+
+# This will show:
+# - Environment information (Node.js, npm, nvm)
+# - Workspace type detection (Angular vs Nx)
+# - Angular Language Server path resolution
+# - Global npm package status
+# - LSP server status
 
 # Or manually check the path being used:
 :lua print(vim.inspect(require('lspconfig').angularls.cmd()))
