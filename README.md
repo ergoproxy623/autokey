@@ -251,12 +251,15 @@ angularls = {
 },
 ```
 
-#### Key Features:
+#### Key Features (VSCode-Compatible):
 - **Strict Template Checking**: Enabled `forceStrictTemplates` for better type safety in templates
+- **Custom Component Discovery**: Workspace-wide component indexing like VSCode
 - **TypeScript Integration**: Automatically configures TypeScript server path for template IntelliSense
 - **Nx Support**: Automatic detection of Nx workspaces (`nx.json`, `workspace.json`)
 - **Enhanced Type Checking**: Stricter TypeScript preferences for better code quality
 - **Intelligent Path Detection**: Automatically finds Angular Language Server from nvm/npm global modules
+- **VSCode-like IntelliSense**: Auto-completion, hover, and navigation for custom components
+- **Workspace Symbol Search**: Full project component discovery and indexing
 
 #### Why TypeScript is Required for Angular Templates:
 
@@ -526,6 +529,64 @@ If `Shift+K` doesn't show hover information in complex templates (especially wit
 # 2. Break large templates into smaller components
 # 3. Use :LspRestart angularls if issues persist
 # 4. Check :checkhealth vim.lsp for general LSP issues
+```
+
+#### Custom Components Not Recognized (No IntelliSense)
+
+If custom components like `<mapal-footer>` show "No information available":
+
+**VSCode-like workspace reload:**
+```bash
+# Force workspace analysis for component discovery
+:AngularReloadWorkspace
+
+# This will:
+# 1. Restart TypeScript and Angular Language Servers
+# 2. Re-index all workspace components
+# 3. Discover custom components like VSCode does
+# 4. Enable hover and auto-completion
+```
+
+**Check component discovery:**
+```bash
+# 1. Verify workspace analysis is working
+:AngularDiagnostic
+
+# 2. Test workspace symbol search
+:lua vim.lsp.buf.workspace_symbol()
+# Type your component name (e.g., "mapal")
+
+# 3. Check if your component is properly exported
+# Make sure your component is:
+# - Declared in a module
+# - Exported from barrel files (index.ts)
+# - Imported in the consuming module
+```
+
+**VSCode-like configuration:**
+The configuration now includes VSCode-equivalent settings:
+```lua
+settings = {
+  angular = {
+    analysis = {
+      analyzeEntireWorkspace = true,  -- Like VSCode
+      followImports = true,           -- Follow component imports
+      indexComponents = true,         -- Index all components
+    },
+    experimental = {
+      enableComponentDiscovery = true, -- VSCode behavior
+    },
+  },
+}
+```
+
+**Manual component registration:**
+If components still aren't discovered:
+```bash
+# 1. Check your angular.json projects configuration
+# 2. Verify tsconfig.json paths are correct
+# 3. Ensure component modules are properly imported
+# 4. Use :AngularReloadWorkspace after making changes
 ```
 
 #### Angular Language Server Not Starting

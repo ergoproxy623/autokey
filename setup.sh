@@ -144,8 +144,8 @@ install_npm_packages() {
         npm install -g nx
     fi
     
-    print_status "Installing Angular Language Server..."
-    npm install -g @angular/language-server
+    print_status "Installing Angular Language Server (latest for VSCode-like features)..."
+    npm install -g @angular/language-server@latest
     
     print_status "Installing TypeScript..."
     npm install -g typescript

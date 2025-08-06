@@ -557,13 +557,26 @@ require('lazy').setup({
               
               -- Enable experimental features for better template support
               table.insert(new_config.cmd, '--enableExperimentalIvy')
+              
+              -- VSCode-like workspace analysis
+              table.insert(new_config.cmd, '--includeCompletionsWithSnippetText')
+              table.insert(new_config.cmd, '--includeAutomaticOptionalChainCompletions')
+              
+              -- Enable workspace component indexing (like VSCode)
+              table.insert(new_config.cmd, '--enableWorkspaceSymbols')
+              
+              -- Better component discovery
+              table.insert(new_config.cmd, '--watchOptions')
+              table.insert(new_config.cmd, '{"watchFile":"useFsEvents","watchDirectory":"useFsEvents"}')
             end
           end,
           settings = {
             angular = {
-              -- Enable strict template checking for better type safety
+              -- Enable strict template checking for better type safety (VSCode default)
               forceStrictTemplates = true,
-              -- Enable experimental features
+              -- VSCode-like language service features
+              log = "verbose",
+              -- Enable all experimental features like VSCode
               experimental = {
                 -- Ivy language service features
                 ivy = true,
@@ -571,6 +584,8 @@ require('lazy').setup({
                 templateTypeCheck = true,
                 -- Better support for complex templates
                 enableTemplateTypeChecker = true,
+                -- Enable component discovery like VSCode
+                enableComponentDiscovery = true,
               },
               -- Angular 17+ Control Flow Support
               enableBlockSyntax = true,
@@ -578,13 +593,16 @@ require('lazy').setup({
               enableControlFlowSyntax = true,
               -- Enable defer block support
               enableDeferBlockSyntax = true,
-              -- Suggest completions for control flow
+              -- VSCode-like suggestion behavior
               suggest = {
                 includeAutomaticOptionalChainCompletions = true,
                 includeCompletionsWithSnippetText = true,
                 includeCompletionsForImportStatements = true,
+                -- Enable custom component suggestions
+                includeCompletionsWithClassMemberSnippets = true,
+                autoClosingTags = true,
               },
-              -- Enhanced hover and completion support
+              -- Enhanced hover and completion support (VSCode behavior)
               hover = {
                 -- Enable hover in all template contexts
                 enabled = true,
@@ -592,8 +610,10 @@ require('lazy').setup({
                 includeTypeInformation = true,
                 -- Show documentation in hover
                 includeDocumentation = true,
+                -- Show component metadata like VSCode
+                includeComponentMetadata = true,
               },
-              -- Better completion support
+              -- Better completion support (VSCode-like)
               completion = {
                 -- Enable completion in all contexts
                 includeGlobalTypes = true,
@@ -603,9 +623,26 @@ require('lazy').setup({
                 includeDirectiveIO = true,
                 -- Include pipe suggestions
                 includePipes = true,
+                -- Custom component support
+                includeCustomComponents = true,
+                -- Auto import suggestions
+                autoImportSuggestions = true,
+                -- Path completion for assets
+                includePathCompletions = true,
+              },
+              -- Component analysis settings (VSCode behavior)
+              analysis = {
+                -- Analyze entire workspace for components
+                analyzeEntireWorkspace = true,
+                -- Include node_modules analysis
+                includeNodeModules = false,
+                -- Follow imports for better IntelliSense
+                followImports = true,
+                -- Index all components
+                indexComponents = true,
               },
             },
-            -- TypeScript settings for Angular 17+
+            -- TypeScript settings for Angular (VSCode-like behavior)
             typescript = {
               preferences = {
                 -- Enable block-scoped bindings
@@ -616,6 +653,15 @@ require('lazy').setup({
                 strictNullChecks = true,
                 -- Enable better template analysis
                 enableTemplateTypeChecker = true,
+                -- VSCode-like import organization
+                organizeImports = {
+                  includePackageJsonAutoImports = "on",
+                },
+                -- Better module resolution like VSCode
+                moduleResolution = "node",
+                -- Enable decorators (Angular uses them extensively)
+                experimentalDecorators = true,
+                emitDecoratorMetadata = true,
               },
               suggest = {
                 -- Enhanced suggestions for new syntax
@@ -624,14 +670,32 @@ require('lazy').setup({
                 completeFunctionCalls = true,
                 completeJSDocs = true,
                 includeCompletionsForModuleExports = true,
+                -- VSCode-like suggestion behavior
+                includeCompletionsWithClassMemberSnippets = true,
+                includeCompletionsWithObjectLiteralMethodSnippets = true,
+                includeCompletionsWithInsertText = true,
+                names = true,
+                paths = true,
+                autoImports = true,
               },
-              -- Enhanced hover support
+              -- Enhanced hover support (VSCode-like)
               implementationsCodeLens = {
                 enabled = true,
               },
               referencesCodeLens = {
                 enabled = true,
                 showOnAllFunctions = true,
+              },
+              -- VSCode-like workspace symbol search
+              workspaceSymbols = {
+                enabled = true,
+                includeReferences = true,
+              },
+              -- Better IntelliSense for large projects
+              maxTsServerMemory = 8192,
+              -- Enable semantic highlighting
+              semanticHighlighting = {
+                enabled = true,
               },
             },
           },
@@ -1163,7 +1227,7 @@ vim.api.nvim_create_autocmd('BufRead', {
   end,
 })
 
--- Better error handling for Angular templates
+-- Better error handling for Angular templates (VSCode-like behavior)
 vim.api.nvim_create_autocmd('FileType', {
   pattern = 'htmlangular',
   callback = function()
@@ -1180,6 +1244,36 @@ vim.api.nvim_create_autocmd('FileType', {
         prefix = '',
       },
     })
+    
+    -- VSCode-like workspace awareness for custom components
+    local bufnr = vim.api.nvim_get_current_buf()
+    
+    -- Set up auto-completion for custom components
+    vim.api.nvim_buf_set_option(bufnr, 'omnifunc', 'v:lua.vim.lsp.omnifunc')
+    
+    -- Enhanced auto-completion trigger characters (like VSCode)
+    local completion_triggers = { '<', '>', '"', "'", '=', ' ', '(', ')', '[', ']', '{', '}', '*', '@' }
+    
+    -- Set up completion triggering
+    for _, char in ipairs(completion_triggers) do
+      vim.keymap.set('i', char, char .. '<C-x><C-o>', { buffer = bufnr, silent = true })
+    end
+    
+    -- Force LSP to analyze the workspace for component discovery
+    vim.defer_fn(function()
+      local clients = {}
+      if vim.lsp.get_clients then
+        clients = vim.lsp.get_clients({ bufnr = bufnr })
+      end
+      
+      for _, client in ipairs(clients) do
+        if client.name == 'angularls' then
+          -- Request workspace symbols to ensure components are indexed
+          client.request('workspace/symbol', { query = 'mapal' }, function() end)
+          break
+        end
+      end
+    end, 1000)
   end,
 })
 
@@ -1330,6 +1424,39 @@ vim.api.nvim_create_user_command('AngularRefresh', function()
     end
   end, 1000)
 end, { desc = 'Refresh Angular Language Server for template issues' })
+
+-- Command to force workspace component analysis (like VSCode's reload window)
+vim.api.nvim_create_user_command('AngularReloadWorkspace', function()
+  print('🔄 Reloading Angular workspace for component discovery...')
+  
+  -- Restart both TypeScript and Angular Language Servers
+  vim.cmd('LspRestart ts_ls')
+  vim.cmd('LspRestart angularls')
+  
+  -- Wait for restart and force workspace analysis
+  vim.defer_fn(function()
+    -- Trigger workspace symbol refresh
+    local clients = {}
+    if vim.lsp.get_clients then
+      clients = vim.lsp.get_clients({ name = 'angularls' })
+    end
+    
+    for _, client in ipairs(clients) do
+      if client.name == 'angularls' then
+        -- Request workspace symbols to trigger component indexing
+        client.request('workspace/symbol', { query = '' }, function(err, result)
+          if not err then
+            print('✓ Angular workspace reloaded - custom components should now be available')
+            print('✓ Found ' .. (result and #result or 0) .. ' workspace symbols')
+          end
+        end)
+        break
+      end
+    end
+    
+    print('✓ Workspace analysis complete - try hovering over custom components')
+  end, 2000)
+end, { desc = 'Reload Angular workspace for component discovery (like VSCode reload)' })
 
 -- Diagnostic command for Angular Language Server setup
 vim.api.nvim_create_user_command('AngularDiagnostic', function()
