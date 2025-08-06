@@ -30,14 +30,16 @@ interface SelectOption {
 })
 export class ExampleComponent implements OnInit, OnDestroy {
   // Properties
-  title: string = 'Angular Development Example';
+  title: string = 'Angular 17+ Development Example';
   appName: string = 'Kickstart Neovim';
   showContent: boolean = true;
+  showLegacyExample: boolean = true;
   isLoading: boolean = false;
   counter: number = 0;
   currentDate: Date = new Date();
   price: number = 29.99;
-  description: string = 'This is an example component showcasing Angular features with Neovim LSP support';
+  description: string = 'This is an example component showcasing Angular 17+ features with Neovim LSP support';
+  selectedTab: 'profile' | 'settings' | 'about' = 'profile';
 
   // Form
   userForm: FormGroup;

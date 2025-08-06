@@ -112,11 +112,34 @@ vim.api.nvim_create_autocmd('TextYankPost', {
   end,
 })
 
--- Angular file type detection
+-- Angular file type detection with enhanced support for Angular 17+
 vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
   pattern = { '*.component.html', '*.container.html' },
   callback = function()
     vim.bo.filetype = 'htmlangular'
+    
+    -- Set up enhanced syntax highlighting for Angular 17+ control flow
+    vim.api.nvim_buf_call(0, function()
+      -- Enable Angular-specific syntax highlighting
+      vim.cmd('syntax include @typescript syntax/typescript.vim')
+      vim.cmd('syntax region angularExpression matchgroup=htmlTag start=/{\\{/ end=/}\\}/ contains=@typescript')
+      
+      -- Highlight new control flow syntax
+      vim.cmd('syntax match angularControlFlow "@\\(if\\|for\\|switch\\|empty\\|placeholder\\|loading\\|error\\)" contained')
+      vim.cmd('syntax region angularControlBlock start="@\\(if\\|for\\|switch\\)" end="}" contains=angularControlFlow,@typescript')
+      
+      -- Highlight attributes and bindings
+      vim.cmd('syntax match angularBinding "\\[\\w\\+\\]" contained')
+      vim.cmd('syntax match angularEvent "(\\w\\+)" contained')
+      vim.cmd('syntax match angularDirective "\\*\\w\\+" contained')
+      
+      -- Set highlighting colors
+      vim.cmd('highlight angularControlFlow guifg=#569cd6')
+      vim.cmd('highlight angularControlBlock guifg=#4fc1ff')
+      vim.cmd('highlight angularBinding guifg=#9cdcfe')
+      vim.cmd('highlight angularEvent guifg=#dcdcaa')
+      vim.cmd('highlight angularDirective guifg=#c586c0')
+    end)
   end,
 })
 
@@ -516,6 +539,31 @@ require('lazy').setup({
                 -- Ivy language service features
                 ivy = true,
               },
+              -- Angular 17+ Control Flow Support
+              enableBlockSyntax = true,
+              -- Enable new control flow (@if, @for, @switch)
+              enableControlFlowSyntax = true,
+              -- Suggest completions for control flow
+              suggest = {
+                includeAutomaticOptionalChainCompletions = true,
+                includeCompletionsWithSnippetText = true,
+              },
+            },
+            -- TypeScript settings for Angular 17+
+            typescript = {
+              preferences = {
+                -- Enable block-scoped bindings
+                includePackageJsonAutoImports = "on",
+                -- Support for Angular 17+ syntax
+                allowTextChangesInNewFiles = true,
+              },
+              suggest = {
+                -- Enhanced suggestions for new syntax
+                enabled = true,
+                autoImports = true,
+                completeFunctionCalls = true,
+                completeJSDocs = true,
+              },
             },
           },
         },
@@ -782,10 +830,43 @@ require('lazy').setup({
       auto_install = true,
       highlight = {
         enable = true,
-        additional_vim_regex_highlighting = { 'ruby' },
+        additional_vim_regex_highlighting = { 'ruby', 'htmlangular' },
       },
-      indent = { enable = true, disable = { 'ruby' } },
+      indent = { 
+        enable = true, 
+        disable = { 'ruby' } 
+      },
+      -- Enhanced Angular 17+ support
+      playground = {
+        enable = true,
+        disable = {},
+        updatetime = 25,
+        persist_queries = false,
+        keybindings = {
+          toggle_query_editor = 'o',
+          toggle_hl_groups = 'i',
+          toggle_injected_languages = 't',
+          toggle_anonymous_nodes = 'a',
+          toggle_language_display = 'I',
+          focus_language = 'f',
+          unfocus_language = 'F',
+          update = 'R',
+          goto_node = '<cr>',
+          show_help = '?',
+        },
+      },
     },
+    config = function(_, opts)
+      require('nvim-treesitter.configs').setup(opts)
+      
+      -- Configure Angular-specific treesitter
+      local parser_config = require('nvim-treesitter.parsers').get_parser_configs()
+      
+      -- Ensure Angular parser is properly configured
+      if parser_config.angular then
+        parser_config.angular.filetype_to_parsername = { 'htmlangular', 'html.angular' }
+      end
+    end,
   },
 
   -- Angular-specific TreeSitter plugin
@@ -1193,6 +1274,32 @@ vim.api.nvim_create_user_command('AngularDiagnostic', function()
     else
       print('Workspace: Standard Angular project')
       print('CLI command: ng')
+    end
+    
+    -- Check Angular version for control flow support
+    local ng_version = vim.fn.system('ng version 2>/dev/null | grep "Angular CLI" || echo "not found"'):gsub('\n', '')
+    if ng_version and ng_version ~= 'not found' then
+      print('Angular CLI: ' .. ng_version)
+      
+      -- Check if project supports new control flow
+      local package_json = vim.fn.readfile('package.json')
+      if package_json then
+        local content = table.concat(package_json, '\n')
+        local angular_version = content:match('"@angular/core": "([^"]+)"')
+        if angular_version then
+          print('Angular Core: ' .. angular_version)
+          
+          -- Check if version supports new control flow (17+)
+          local major_version = tonumber(angular_version:match('(%d+)'))
+          if major_version and major_version >= 17 then
+            print('✓ Angular 17+ control flow (@if, @for, @switch) supported')
+          else
+            print('⚠ Angular ' .. major_version .. ' - consider upgrading to 17+ for new control flow syntax')
+          end
+        end
+      end
+    else
+      print('Angular CLI: not found')
     end
     print('')
   end

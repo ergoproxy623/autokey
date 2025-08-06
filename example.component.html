@@ -1,8 +1,44 @@
 <div class="container">
   <h1>{{ title }}</h1>
   
-  <!-- Angular directives and interpolation -->
-  <div *ngIf="showContent; else loadingTemplate" class="content">
+  <!-- Angular 17+ Control Flow Syntax -->
+  @if (showContent) {
+    <div class="content">
+      <p>Welcome to {{ appName }} with Angular 17+ control flow!</p>
+      
+      <!-- New @for syntax -->
+      <ul>
+        @for (item of items; track item.id; let i = $index) {
+          <li [class.active]="item.active" (click)="selectItem(item, i)">
+            {{ i + 1 }}. {{ item.name }} - {{ item.description }}
+          </li>
+        } @empty {
+          <li>No items available</li>
+        }
+      </ul>
+      
+      <!-- New @switch syntax -->
+      @switch (selectedTab) {
+        @case ('profile') {
+          <div class="profile-tab">Profile content</div>
+        }
+        @case ('settings') {
+          <div class="settings-tab">Settings content</div>
+        }
+        @default {
+          <div class="default-tab">Default content</div>
+        }
+      }
+    </div>
+  } @else {
+    <div class="loading">
+      <p>Loading...</p>
+      <div class="spinner"></div>
+    </div>
+  }
+  
+  <!-- Legacy Angular directives (still supported) -->
+  <div *ngIf="showLegacyExample" class="legacy-content">
     <p>Welcome to {{ appName }}!</p>
     
     <!-- ngFor directive -->
@@ -49,14 +85,6 @@
       </button>
     </form>
   </div>
-  
-  <!-- Loading template -->
-  <ng-template #loadingTemplate>
-    <div class="loading">
-      <p>Loading...</p>
-      <div class="spinner"></div>
-    </div>
-  </ng-template>
   
   <!-- Pipe examples -->
   <div class="info-section">

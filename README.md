@@ -425,6 +425,60 @@ ls -la $(npm config get prefix)/lib/node_modules/typescript/lib
 - ✅ Verify TypeScript compiler is available globally
 - ✅ Confirm `tsconfig.json` exists in project root
 
+#### Angular 17+ Control Flow (@if, @for, @switch) Not Working
+
+If autocomplete doesn't work inside Angular 17+ control flow blocks:
+
+**Check Angular version:**
+```bash
+# Verify you're using Angular 17+
+ng version
+
+# Check project Angular version
+cat package.json | grep "@angular/core"
+
+# Run diagnostic to see control flow support
+:AngularDiagnostic
+```
+
+**Ensure Language Server supports control flow:**
+```bash
+# Update Angular Language Server to latest version
+npm install -g @angular/language-server@latest
+
+# Verify Language Server configuration
+:lua print(vim.inspect(require('lspconfig').angularls.resolved_capabilities))
+```
+
+**Check template syntax:**
+```html
+<!-- ✅ Correct Angular 17+ syntax -->
+@if (condition) {
+  <div>Content</div>
+} @else {
+  <div>Alternative</div>
+}
+
+@for (item of items; track item.id) {
+  <div>{{ item.name }}</div>
+} @empty {
+  <div>No items</div>
+}
+
+<!-- ❌ Old syntax (still works but limited IntelliSense) -->
+<div *ngIf="condition">Content</div>
+<div *ngFor="let item of items">{{ item.name }}</div>
+```
+
+**Force Language Server restart:**
+```bash
+# In Neovim
+:LspRestart angularls
+
+# Check if control flow is recognized
+:AngularDiagnostic
+```
+
 #### Angular Language Server Not Starting
 
 **For nvm users:**
