@@ -1307,11 +1307,28 @@ vim.api.nvim_create_user_command('AngularDiagnostic', function()
   local function check_angular_ls()
     print('--- Angular Language Server Detection ---')
     
-    -- Get the actual command that would be used
-    local servers = require('lspconfig').get_active_clients({ name = 'angularls' })
+    -- Get the actual command that would be used (compatible with different Neovim versions)
+    local servers = {}
+    
+    -- Try newer Neovim API first
+    if vim.lsp.get_clients then
+      servers = vim.lsp.get_clients({ name = 'angularls' })
+    elseif vim.lsp.get_active_clients then
+      -- Fallback for older Neovim versions
+      local all_clients = vim.lsp.get_active_clients()
+      for _, client in ipairs(all_clients) do
+        if client.name == 'angularls' then
+          table.insert(servers, client)
+        end
+      end
+    end
+    
     if #servers > 0 then
-      print('Angular LS is running with command: ' .. vim.inspect(servers[1].config.cmd))
+      print('✓ Angular LS is running with command: ' .. vim.inspect(servers[1].config.cmd))
+      print('✓ Angular LS attached to buffers: ' .. #servers)
     else
+      print('○ Angular LS not currently running')
+      
       -- Try to get the command that would be used
       local angularls_config = require('lspconfig').angularls
       if angularls_config and angularls_config.cmd then
