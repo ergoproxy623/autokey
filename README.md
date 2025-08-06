@@ -479,6 +479,55 @@ npm install -g @angular/language-server@latest
 :AngularDiagnostic
 ```
 
+#### Shift+K (Hover) Not Working in Templates
+
+If `Shift+K` doesn't show hover information in complex templates (especially with `@defer`, `@if`, etc.):
+
+**Quick fix:**
+```bash
+# In the problematic template file
+:AngularRefresh
+
+# This will:
+# 1. Restart Angular Language Server
+# 2. Force reanalysis of current template
+# 3. Re-enable hover functionality
+```
+
+**Diagnostic steps:**
+```bash
+# 1. Check if Angular LS is attached to current buffer
+:AngularDiagnostic
+
+# Should show:
+# ✓ Angular LS attached to current buffer
+# ✓ Hover capability: enabled
+
+# 2. Test hover on different elements:
+# - Component properties: {{ userInfo }}
+# - Methods: (click)="logout(true)"
+# - Pipes: | async
+# - Directives: *ngIf
+# - Custom components: <mapal-menu-desktop>
+
+# 3. If hover still doesn't work, check LSP logs
+:LspLog
+```
+
+**Common causes:**
+- **Complex template structure**: `@defer` blocks can confuse the parser
+- **Mixed syntax**: Combining old (`*ngIf`) and new (`@if`) syntax
+- **Large template files**: Performance issues with complex templates
+- **Nested components**: Deep component hierarchies
+
+**Workarounds:**
+```bash
+# 1. Use :AngularRefresh regularly in complex templates
+# 2. Break large templates into smaller components
+# 3. Use :LspRestart angularls if issues persist
+# 4. Check :checkhealth vim.lsp for general LSP issues
+```
+
 #### Angular Language Server Not Starting
 
 **For nvm users:**

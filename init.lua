@@ -118,20 +118,41 @@ vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
   callback = function()
     vim.bo.filetype = 'htmlangular'
     
+    -- Set buffer-specific options for better LSP support
+    vim.bo.omnifunc = 'v:lua.vim.lsp.omnifunc'
+    
+    -- Enable better LSP hover support for complex templates
+    vim.keymap.set('n', 'K', function()
+      -- Try LSP hover first
+      local params = vim.lsp.util.make_position_params()
+      vim.lsp.buf_request(0, 'textDocument/hover', params, function(err, result, ctx, config)
+        if result and result.contents then
+          vim.lsp.util.open_floating_preview(result.contents, 'markdown', config)
+        else
+          -- Fallback to help if LSP hover fails
+          local word = vim.fn.expand('<cword>')
+          if word and word ~= '' then
+            vim.cmd('help ' .. word)
+          end
+        end
+      end)
+    end, { buffer = true, desc = 'LSP Hover (Angular Template)' })
+    
     -- Set up enhanced syntax highlighting for Angular 17+ control flow
     vim.api.nvim_buf_call(0, function()
       -- Enable Angular-specific syntax highlighting
       vim.cmd('syntax include @typescript syntax/typescript.vim')
       vim.cmd('syntax region angularExpression matchgroup=htmlTag start=/{\\{/ end=/}\\}/ contains=@typescript')
       
-      -- Highlight new control flow syntax
-      vim.cmd('syntax match angularControlFlow "@\\(if\\|for\\|switch\\|empty\\|placeholder\\|loading\\|error\\)" contained')
-      vim.cmd('syntax region angularControlBlock start="@\\(if\\|for\\|switch\\)" end="}" contains=angularControlFlow,@typescript')
+      -- Highlight new control flow syntax including @defer
+      vim.cmd('syntax match angularControlFlow "@\\(if\\|for\\|switch\\|defer\\|empty\\|placeholder\\|loading\\|error\\|when\\|on\\)" contained')
+      vim.cmd('syntax region angularControlBlock start="@\\(if\\|for\\|switch\\|defer\\)" end="}" contains=angularControlFlow,@typescript')
       
       -- Highlight attributes and bindings
       vim.cmd('syntax match angularBinding "\\[\\w\\+\\]" contained')
       vim.cmd('syntax match angularEvent "(\\w\\+)" contained')
       vim.cmd('syntax match angularDirective "\\*\\w\\+" contained')
+      vim.cmd('syntax match angularPipe "|\\s*\\w\\+" contained')
       
       -- Set highlighting colors
       vim.cmd('highlight angularControlFlow guifg=#569cd6')
@@ -139,6 +160,7 @@ vim.api.nvim_create_autocmd({ 'BufRead', 'BufNewFile' }, {
       vim.cmd('highlight angularBinding guifg=#9cdcfe')
       vim.cmd('highlight angularEvent guifg=#dcdcaa')
       vim.cmd('highlight angularDirective guifg=#c586c0')
+      vim.cmd('highlight angularPipe guifg=#4ec9b0')
     end)
   end,
 })
@@ -528,6 +550,13 @@ require('lazy').setup({
                 table.insert(new_config.cmd, '--tsServerPath')
                 table.insert(new_config.cmd, ts_server_path)
               end
+              
+              -- Enable verbose logging for debugging template issues
+              table.insert(new_config.cmd, '--logVerbosity')
+              table.insert(new_config.cmd, 'verbose')
+              
+              -- Enable experimental features for better template support
+              table.insert(new_config.cmd, '--enableExperimentalIvy')
             end
           end,
           settings = {
@@ -538,15 +567,42 @@ require('lazy').setup({
               experimental = {
                 -- Ivy language service features
                 ivy = true,
+                -- Enable experimental template features
+                templateTypeCheck = true,
+                -- Better support for complex templates
+                enableTemplateTypeChecker = true,
               },
               -- Angular 17+ Control Flow Support
               enableBlockSyntax = true,
-              -- Enable new control flow (@if, @for, @switch)
+              -- Enable new control flow (@if, @for, @switch, @defer)
               enableControlFlowSyntax = true,
+              -- Enable defer block support
+              enableDeferBlockSyntax = true,
               -- Suggest completions for control flow
               suggest = {
                 includeAutomaticOptionalChainCompletions = true,
                 includeCompletionsWithSnippetText = true,
+                includeCompletionsForImportStatements = true,
+              },
+              -- Enhanced hover and completion support
+              hover = {
+                -- Enable hover in all template contexts
+                enabled = true,
+                -- Show type information in hover
+                includeTypeInformation = true,
+                -- Show documentation in hover
+                includeDocumentation = true,
+              },
+              -- Better completion support
+              completion = {
+                -- Enable completion in all contexts
+                includeGlobalTypes = true,
+                -- Include component inputs/outputs
+                includeComponentIO = true,
+                -- Include directive inputs/outputs
+                includeDirectiveIO = true,
+                -- Include pipe suggestions
+                includePipes = true,
               },
             },
             -- TypeScript settings for Angular 17+
@@ -556,6 +612,10 @@ require('lazy').setup({
                 includePackageJsonAutoImports = "on",
                 -- Support for Angular 17+ syntax
                 allowTextChangesInNewFiles = true,
+                -- Better inference for complex expressions
+                strictNullChecks = true,
+                -- Enable better template analysis
+                enableTemplateTypeChecker = true,
               },
               suggest = {
                 -- Enhanced suggestions for new syntax
@@ -563,6 +623,15 @@ require('lazy').setup({
                 autoImports = true,
                 completeFunctionCalls = true,
                 completeJSDocs = true,
+                includeCompletionsForModuleExports = true,
+              },
+              -- Enhanced hover support
+              implementationsCodeLens = {
+                enabled = true,
+              },
+              referencesCodeLens = {
+                enabled = true,
+                showOnAllFunctions = true,
               },
             },
           },
@@ -1242,6 +1311,26 @@ if is_nx_workspace() then
   end, { desc = '[N]x [A]ffected' })
 end
 
+-- Command to refresh Angular Language Server for template issues
+vim.api.nvim_create_user_command('AngularRefresh', function()
+  -- Restart Angular Language Server
+  vim.cmd('LspRestart angularls')
+  
+  -- Wait a moment for restart
+  vim.defer_fn(function()
+    -- Force reanalysis of current buffer if it's an Angular template
+    if vim.bo.filetype == 'htmlangular' then
+      -- Trigger document sync
+      vim.lsp.buf.format({ async = false })
+      
+      print('✓ Angular Language Server refreshed for template: ' .. vim.fn.expand('%:t'))
+      print('Try Shift+K again for hover information')
+    else
+      print('AngularRefresh should be used in Angular template files (.component.html)')
+    end
+  end, 1000)
+end, { desc = 'Refresh Angular Language Server for template issues' })
+
 -- Diagnostic command for Angular Language Server setup
 vim.api.nvim_create_user_command('AngularDiagnostic', function()
   local function check_path(path, name)
@@ -1377,6 +1466,31 @@ vim.api.nvim_create_user_command('AngularDiagnostic', function()
   
   print('--- LSP Status ---')
   vim.cmd('LspInfo')
+  
+  -- Check current buffer LSP attachment
+  if vim.bo.filetype == 'htmlangular' then
+    print('')
+    print('--- Current Template Buffer ---')
+    local clients = {}
+    if vim.lsp.get_clients then
+      clients = vim.lsp.get_clients({ bufnr = 0 })
+    elseif vim.lsp.buf_get_clients then
+      clients = vim.lsp.buf_get_clients(0)
+    end
+    
+    if #clients > 0 then
+      for _, client in ipairs(clients) do
+        if client.name == 'angularls' then
+          print('✓ Angular LS attached to current buffer')
+          print('✓ Hover capability: ' .. (client.server_capabilities.hoverProvider and 'enabled' or 'disabled'))
+          break
+        end
+      end
+    else
+      print('✗ No LSP clients attached to current template buffer')
+      print('Try :AngularRefresh to fix template LSP issues')
+    end
+  end
 end, { desc = 'Diagnose Angular Language Server setup' })
 
 -- The line beneath this is called `modeline`. See `:help modeline`
